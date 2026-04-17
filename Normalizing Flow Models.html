@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Normalizing Flow Models - Dr. Mohamed Elbasheer</title>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)'],['$','$']], displayMath: [['\\[','\\]']] }
+};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+/* ---- Screen styles ---- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --accent: #4f46e5;
+  --accent2: #0891b2;
+  --accent3: #059669;
+  --text: #111827;
+  --text2: #4b5563;
+  --border: #e5e7eb;
+  --bg-light: #f9fafb;
+  --bg-code: #f3f4f6;
+}
+
+body {
+  font-family: 'Lora', Georgia, serif;
+  color: var(--text);
+  background: #fff;
+  font-size: 11pt;
+  line-height: 1.8;
+}
+
+/* Page wrapper */
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 40px;
+}
+
+/* Print button - hidden in print */
+.print-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  background: #111827;
+  color: #fff;
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  z-index: 100;
+}
+.print-bar span { color: #9ca3af; }
+.print-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+}
+.print-btn:hover { opacity: 0.9; }
+
+/* Push content below bar on screen */
+@media screen {
+  .page { margin-top: 56px; }
+}
+
+/* ---- Header ---- */
+.article-header {
+  text-align: center;
+  padding-bottom: 32px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 36px;
+}
+.article-label {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 9.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  border-radius: 4px;
+  padding: 3px 12px;
+  margin-bottom: 20px;
+}
+.article-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 26pt;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #111827;
+  margin-bottom: 14px;
+  letter-spacing: -0.5px;
+}
+.article-subtitle {
+  font-size: 13pt;
+  color: var(--text2);
+  font-style: italic;
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+.author-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+.author-avatar {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.author-info { text-align: left; }
+.author-name {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 11pt;
+  color: #111827;
+}
+.author-meta {
+  font-size: 9.5pt;
+  color: var(--text2);
+  font-family: 'Inter', sans-serif;
+}
+.article-date {
+  font-size: 9.5pt;
+  color: var(--text2);
+  font-family: 'Inter', sans-serif;
+  margin-top: 16px;
+}
+
+/* ---- Abstract ---- */
+.abstract {
+  background: var(--bg-light);
+  border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 20px 24px;
+  margin-bottom: 36px;
+  font-size: 10.5pt;
+}
+.abstract-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 9pt;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+/* ---- Section headings ---- */
+h2 {
+  font-family: 'Inter', sans-serif;
+  font-size: 16pt;
+  font-weight: 800;
+  color: #111827;
+  margin: 36px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  letter-spacing: -0.3px;
+}
+h3 {
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5pt;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 24px 0 10px;
+}
+h4 {
+  font-family: 'Inter', sans-serif;
+  font-size: 11pt;
+  font-weight: 600;
+  color: var(--accent2);
+  margin: 18px 0 8px;
+}
+
+/* ---- Body text ---- */
+p { margin-bottom: 14px; text-align: justify; }
+strong { font-weight: 700; color: #111827; }
+em { font-style: italic; color: var(--accent); font-weight: 500; }
+
+/* ---- Math ---- */
+.math-block {
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 24px;
+  margin: 18px 0;
+  text-align: center;
+  font-size: 11pt;
+  overflow-x: auto;
+}
+
+/* ---- Figures ---- */
+.figure {
+  margin: 28px 0;
+  page-break-inside: avoid;
+}
+.figure-inner {
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+}
+.figure-caption {
+  margin-top: 12px;
+  font-size: 9.5pt;
+  color: var(--text2);
+  text-align: center;
+  font-style: italic;
+  font-family: 'Inter', sans-serif;
+}
+.figure-caption strong { color: var(--text); font-style: normal; }
+
+/* SVG diagrams */
+svg text { font-family: 'Inter', sans-serif; }
+
+/* ---- Info boxes ---- */
+.callout {
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 20px 0;
+  font-size: 10.5pt;
+  page-break-inside: avoid;
+}
+.callout.key { background: #eef2ff; border-left: 4px solid var(--accent); }
+.callout.insight { background: #ecfdf5; border-left: 4px solid var(--accent3); }
+.callout.note { background: #f0f9ff; border-left: 4px solid var(--accent2); }
+.callout-label {
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 9pt;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.callout.key .callout-label { color: var(--accent); }
+.callout.insight .callout-label { color: var(--accent3); }
+.callout.note .callout-label { color: var(--accent2); }
+
+/* ---- Lists ---- */
+ul, ol { margin: 12px 0 16px 24px; }
+li { margin-bottom: 6px; font-size: 10.5pt; }
+li::marker { color: var(--accent); }
+
+/* ---- Table ---- */
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 10pt; page-break-inside: avoid; }
+th { background: #f3f4f6; font-family: 'Inter', sans-serif; font-weight: 700; padding: 9px 14px; text-align: left; border-bottom: 2px solid var(--border); color: #111827; }
+td { padding: 8px 14px; border-bottom: 1px solid var(--border); color: var(--text2); }
+tr:nth-child(even) td { background: #fafafa; }
+
+/* ---- Code ---- */
+pre {
+  background: var(--bg-code);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5pt;
+  line-height: 1.6;
+  overflow-x: auto;
+  margin: 18px 0;
+  page-break-inside: avoid;
+}
+code { font-family: 'JetBrains Mono', monospace; font-size: 9pt; background: #f3f4f6; padding: 1px 5px; border-radius: 3px; }
+pre code { background: none; padding: 0; font-size: 8.5pt; }
+
+/* ---- Section numbers ---- */
+.sec-num {
+  display: inline-block;
+  background: var(--accent);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 9pt;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 7px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+/* ---- Two-column grid ---- */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+.col-card { background: var(--bg-light); border: 1px solid var(--border); border-radius: 8px; padding: 16px; font-size: 10pt; }
+.col-card h4 { margin-top: 0; font-size: 10.5pt; }
+
+/* ---- Footer ---- */
+.article-footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 2px solid var(--border);
+  font-family: 'Inter', sans-serif;
+  font-size: 9.5pt;
+  color: var(--text2);
+  text-align: center;
+}
+.footer-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0; }
+.tag {
+  background: #f3f4f6;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 3px 12px;
+  font-size: 9pt;
+  color: var(--text2);
+}
+
+/* ---- Print styles ---- */
+@media print {
+  @page { size: A4; margin: 18mm 20mm; }
+  .print-bar { display: none !important; }
+  .page { margin-top: 0; padding: 0; max-width: 100%; }
+  body { font-size: 10.5pt; }
+  h2 { page-break-after: avoid; }
+  h3 { page-break-after: avoid; }
+  .figure { page-break-inside: avoid; }
+  .callout { page-break-inside: avoid; }
+  pre { page-break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Print bar (screen only) -->
+<div class="print-bar">
+  <span>Open in browser, then press the button to export as PDF</span>
+  <button class="print-btn" onclick="window.print()">Save as PDF</button>
+</div>
+
+<div class="page">
+
+<!-- ===== HEADER ===== -->
+<div class="article-header">
+  <div class="article-label">Technical Article</div>
+  <h1 class="article-title">Normalizing Flow Models:<br>A Visual and Intuitive Guide</h1>
+  <p class="article-subtitle">How invertible transformations turn simple Gaussian noise<br>into complex, realistic data distributions</p>
+  <div class="author-row">
+    <div class="author-avatar">ME</div>
+    <div class="author-info">
+      <div class="author-name">Dr. Mohamed Elbasheer</div>
+      <div class="author-meta">Machine Learning Researcher</div>
+    </div>
+  </div>
+  <div class="article-date">April 2026</div>
+</div>
+
+<!-- ===== ABSTRACT ===== -->
+<div class="abstract">
+  <div class="abstract-label">Abstract</div>
+  Normalizing flows are a class of generative models that learn an invertible, differentiable mapping between a simple base distribution and a complex data distribution. Unlike GANs, they provide exact likelihood computation; unlike VAEs, the encoding is lossless and deterministic. This article introduces the mathematical foundations, the change-of-variables formula, efficient coupling-layer architectures, and a complete PyTorch implementation - all presented through visual intuition and a running example on the two-moons dataset.
+</div>
+
+<!-- ===== 1. INTRODUCTION ===== -->
+<h2><span class="sec-num">1</span>Introduction</h2>
+
+<p>Generative modeling sits at the heart of modern machine learning: the ability to learn the underlying structure of data well enough to synthesize new, realistic samples. Three dominant paradigms have emerged - Generative Adversarial Networks (GANs), Variational Autoencoders (VAEs), and <strong>Normalizing Flows</strong>. Each makes different trade-offs between sample quality, training stability, and tractability of the likelihood.</p>
+
+<p>Normalizing flows occupy a unique position: they are the only class that offers <em>exact</em> likelihood evaluation, stable training via maximum likelihood, and a fully invertible latent representation. This makes them especially attractive for scientific applications where probability estimates matter, anomaly detection, and uncertainty quantification.</p>
+
+<table>
+  <tr><th>Model</th><th>Exact Likelihood</th><th>Stable Training</th><th>Invertible Encoding</th></tr>
+  <tr><td>GAN</td><td>No</td><td>No (adversarial)</td><td>No</td></tr>
+  <tr><td>VAE</td><td>No (lower bound)</td><td>Yes</td><td>No (stochastic)</td></tr>
+  <tr><td><strong>Normalizing Flow</strong></td><td><strong>Yes</strong></td><td><strong>Yes</strong></td><td><strong>Yes</strong></td></tr>
+</table>
+
+<!-- ===== 2. PROBABILITY BACKGROUND ===== -->
+<h2><span class="sec-num">2</span>Probability Background</h2>
+
+<p>A <strong>probability density function (PDF)</strong> \( p(x) \) assigns a non-negative value to every point in the sample space such that \(\int p(x)\,dx = 1\). The standard normal distribution \(\mathcal{N}(0, I)\) is our reference distribution of choice because it is simple to sample from and its density is analytically tractable:</p>
+
+<div class="math-block">
+  \[ p_Z(\mathbf{z}) = \frac{1}{(2\pi)^{D/2}} \exp\!\left(-\frac{\|\mathbf{z}\|^2}{2}\right) \]
+</div>
+
+<p>The central challenge is that real data - images, audio, molecular structures - follows a far more complex distribution \( p_X(\mathbf{x}) \) that cannot be written down in closed form. The question normalizing flows answer is: <em>can we learn a function that connects these two distributions?</em></p>
+
+<!-- ===== 3. THE CORE IDEA ===== -->
+<h2><span class="sec-num">3</span>The Core Idea: Transforming Distributions</h2>
+
+<p>Suppose we have a simple random variable \(\mathbf{z} \sim p_Z\) and we apply a smooth, invertible function \(f\) to obtain \(\mathbf{x} = f(\mathbf{z})\). What is the density of \(\mathbf{x}\)?</p>
+
+<p>Intuitively, probability acts like an incompressible fluid. If a transformation <em>squeezes</em> a region of space, the density in that region must increase to keep the total probability equal to 1. If it <em>stretches</em> space, the density decreases. The correction factor that tracks this volume change is the <strong>Jacobian determinant</strong>.</p>
+
+<div class="figure">
+  <div class="figure-inner">
+    <svg width="680" height="110" viewBox="0 0 680 110">
+      <!-- Left blob -->
+      <ellipse cx="120" cy="55" rx="80" ry="45" fill="#eef2ff" stroke="#4f46e5" stroke-width="2"/>
+      <text x="120" y="48" text-anchor="middle" font-size="13" font-weight="700" fill="#4f46e5">p_Z(z)</text>
+      <text x="120" y="66" text-anchor="middle" font-size="11" fill="#6b7280">Gaussian</text>
+      <!-- Arrow -->
+      <line x1="215" y1="55" x2="295" y2="55" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arr)"/>
+      <text x="255" y="46" text-anchor="middle" font-size="12" font-weight="700" fill="#4f46e5">f (flow)</text>
+      <text x="255" y="72" text-anchor="middle" font-size="10" fill="#6b7280">invertible</text>
+      <!-- Inverse arrow -->
+      <line x1="295" y1="65" x2="215" y2="65" stroke="#0891b2" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr2)"/>
+      <text x="255" y="82" text-anchor="middle" font-size="10" fill="#0891b2">f&#x207B;&#xB9;</text>
+      <!-- Right blob (irregular) -->
+      <path d="M380,20 Q430,10 470,30 Q520,15 540,55 Q555,90 500,100 Q450,115 410,95 Q360,105 350,75 Q340,45 380,20Z" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+      <text x="450" y="55" text-anchor="middle" font-size="13" font-weight="700" fill="#d97706">p_X(x)</text>
+      <text x="450" y="72" text-anchor="middle" font-size="11" fill="#6b7280">Complex data</text>
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#4f46e5"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#0891b2"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+  <p class="figure-caption"><strong>Figure 1.</strong> A normalizing flow learns an invertible mapping \(f\) between a simple Gaussian base distribution and a complex data distribution. The inverse \(f^{-1}\) encodes data back to latent space.</p>
+</div>
+
+<!-- ===== 4. CHANGE OF VARIABLES ===== -->
+<h2><span class="sec-num">4</span>The Change of Variables Formula</h2>
+
+<p>The formal connection between \(p_Z\) and \(p_X\) is given by the <strong>change of variables theorem</strong>. For a diffeomorphism \(f: \mathbb{R}^D \to \mathbb{R}^D\):</p>
+
+<div class="math-block">
+  \[ p_X(\mathbf{x}) = p_Z\!\left(f^{-1}(\mathbf{x})\right) \cdot \left|\det \frac{\partial f^{-1}}{\partial \mathbf{x}}\right| \]
+</div>
+
+<p>Taking logarithms (for numerical stability):</p>
+
+<div class="math-block">
+  \[ \log p_X(\mathbf{x}) = \log p_Z(\mathbf{z}) - \log \left|\det J_f(\mathbf{z})\right| \]
+</div>
+
+<p>where \(J_f\) is the Jacobian matrix of \(f\) and \(\mathbf{z} = f^{-1}(\mathbf{x})\). For a chain of \(K\) transformations \(f = f_K \circ \cdots \circ f_1\):</p>
+
+<div class="math-block">
+  \[ \log p_X(\mathbf{x}) = \log p_Z(\mathbf{z}_0) + \sum_{k=1}^{K} \log \left|\det J_{f_k^{-1}}(\mathbf{z}_k)\right| \]
+</div>
+
+<h3>The Computational Challenge</h3>
+
+<p>Computing a general \(D \times D\) determinant costs \(\mathcal{O}(D^3)\). For a \(64 \times 64\) image, \(D = 4096\), making naive computation completely intractable. The key insight of practical flow architectures is to <strong>design \(f\) so that its Jacobian is triangular</strong>. The determinant of a triangular matrix is simply the product of its diagonal entries:</p>
+
+<div class="math-block">
+  \[ \det\begin{pmatrix} a_{11} & * & * \\ 0 & a_{22} & * \\ 0 & 0 & a_{33}\end{pmatrix} = a_{11} \cdot a_{22} \cdot a_{33} \quad \Rightarrow \quad \mathcal{O}(D) \text{ computation} \]
+</div>
+
+<!-- ===== 5. AFFINE COUPLING LAYERS ===== -->
+<h2><span class="sec-num">5</span>Affine Coupling Layers</h2>
+
+<p>The <strong>affine coupling layer</strong>, introduced in RealNVP (Dinh et al., 2016), is the most widely used building block. It achieves tractable Jacobians while allowing arbitrarily complex neural networks inside.</p>
+
+<h3>Forward Pass</h3>
+<p>Given input \(\mathbf{z} \in \mathbb{R}^D\), split into two halves \(\mathbf{z}_{1:d}\) and \(\mathbf{z}_{d+1:D}\):</p>
+
+<div class="math-block">
+  \[
+  \mathbf{x}_{1:d} = \mathbf{z}_{1:d} \qquad \text{(identity)}
+  \]
+  \[
+  \mathbf{x}_{d+1:D} = \mathbf{z}_{d+1:D} \odot \exp\!\bigl(s(\mathbf{z}_{1:d})\bigr) + t(\mathbf{z}_{1:d})
+  \]
+</div>
+
+<p>where \(s(\cdot)\) and \(t(\cdot)\) are arbitrary neural networks outputting scale and shift vectors.</p>
+
+<h3>Inverse Pass</h3>
+<div class="math-block">
+  \[
+  \mathbf{z}_{1:d} = \mathbf{x}_{1:d} \qquad
+  \mathbf{z}_{d+1:D} = \bigl(\mathbf{x}_{d+1:D} - t(\mathbf{x}_{1:d})\bigr) \odot \exp\!\bigl(-s(\mathbf{x}_{1:d})\bigr)
+  \]
+</div>
+
+<h3>Why the Jacobian is Triangular</h3>
+
+<div class="figure">
+  <div class="figure-inner">
+    <svg width="620" height="130" viewBox="0 0 620 130">
+      <!-- Jacobian matrix -->
+      <text x="20" y="30" font-size="13" font-weight="700" fill="#111827">Jacobian of coupling layer:</text>
+      <text x="20" y="60" font-size="22" fill="#9ca3af">[</text>
+      <rect x="40" y="40" width="200" height="75" fill="#eef2ff" rx="4" stroke="#4f46e5" stroke-width="1.5"/>
+      <!-- Top-left block (identity) -->
+      <rect x="40" y="40" width="100" height="37" fill="#ddd6fe" rx="2"/>
+      <text x="90" y="64" text-anchor="middle" font-size="12" font-weight="700" fill="#4f46e5">I_d</text>
+      <!-- Top-right (zeros) -->
+      <text x="190" y="64" text-anchor="middle" font-size="12" fill="#9ca3af">0</text>
+      <!-- Bottom-left -->
+      <text x="90" y="100" text-anchor="middle" font-size="11" fill="#6b7280">*</text>
+      <!-- Bottom-right (diagonal) -->
+      <rect x="140" y="77" width="100" height="38" fill="#d1fae5" rx="2"/>
+      <text x="190" y="101" text-anchor="middle" font-size="11" font-weight="700" fill="#059669">diag(exp(s))</text>
+      <text x="244" y="60" font-size="22" fill="#9ca3af">]</text>
+      <!-- Det -->
+      <text x="280" y="72" font-size="14" fill="#111827">det =</text>
+      <text x="330" y="72" font-size="14" font-weight="700" fill="#059669">1 &times; &#x220F; exp(s_i)</text>
+      <text x="330" y="94" font-size="13" fill="#4f46e5">= exp(&#x2211; s_i)</text>
+      <text x="330" y="114" font-size="11" fill="#6b7280">O(D) computation</text>
+    </svg>
+  </div>
+  <p class="figure-caption"><strong>Figure 2.</strong> The Jacobian of an affine coupling layer is lower triangular. The top-left block is an identity matrix (first half is unchanged), and the bottom-right block is diagonal (elementwise scaling). The determinant reduces to a simple sum of log-scales.</p>
+</div>
+
+<p>The log-determinant becomes:</p>
+<div class="math-block">
+  \[ \log\left|\det J\right| = \sum_{i=d+1}^{D} s_i(\mathbf{z}_{1:d}) \]
+</div>
+
+<div class="callout key">
+  <div class="callout-label">Key Insight</div>
+  The neural networks \(s(\cdot)\) and \(t(\cdot)\) can be <em>arbitrarily deep and wide</em> - their complexity does not affect the cost of computing the Jacobian determinant, because they only appear on the diagonal. This is the architectural trick that makes flows practical.
+</div>
+
+<!-- ===== 6. TRAINING ===== -->
+<h2><span class="sec-num">6</span>Training via Maximum Likelihood</h2>
+
+<p>Training a normalizing flow is straightforward: maximize the exact log-likelihood of the training data. Given a dataset \(\{\mathbf{x}^{(i)}\}_{i=1}^N\):</p>
+
+<div class="math-block">
+  \[ \mathcal{L}(\theta) = \frac{1}{N}\sum_{i=1}^{N} \left[ \log p_Z\!\bigl(f_\theta^{-1}(\mathbf{x}^{(i)})\bigr) + \log\!\left|\det J_{f_\theta^{-1}}\!\bigl(\mathbf{x}^{(i)})\bigr)\right| \right] \]
+</div>
+
+<p>This decomposes naturally into two interpretable terms:</p>
+<ol>
+  <li><strong>Latent fit:</strong> the encoded points should resemble samples from the base Gaussian.</li>
+  <li><strong>Volume accounting:</strong> the log-determinant penalizes transformations that collapse or over-expand probability mass.</li>
+</ol>
+
+<h3>Generating New Samples</h3>
+<p>Sampling from a trained flow is a single forward pass:</p>
+<ol>
+  <li>Sample \(\mathbf{z} \sim \mathcal{N}(0, I)\) (trivially fast)</li>
+  <li>Compute \(\mathbf{x} = f_\theta(\mathbf{z})\)</li>
+</ol>
+
+<!-- ===== 7. WORKED EXAMPLE ===== -->
+<h2><span class="sec-num">7</span>Worked Example: Two-Moons Dataset</h2>
+
+<p>The two-moons dataset is a canonical 2D benchmark: two interleaved crescent-shaped clusters that no single Gaussian can capture. It demonstrates the need for multi-modal, non-convex density estimation.</p>
+
+<div class="figure">
+  <div class="figure-inner">
+    <svg width="660" height="140" viewBox="0 0 660 140">
+      <!-- Step 1: Data space -->
+      <rect x="10" y="10" width="180" height="120" rx="8" fill="#f8fafc" stroke="#e5e7eb" stroke-width="1.5"/>
+      <text x="100" y="28" text-anchor="middle" font-size="11" font-weight="700" fill="#111827">Data Space</text>
+      <!-- Moon 1 -->
+      <path d="M35,90 Q60,40 100,40 Q140,40 165,90" fill="none" stroke="#4f46e5" stroke-width="3" stroke-linecap="round"/>
+      <!-- Moon 2 -->
+      <path d="M55,80 Q80,130 120,130 Q160,130 175,80" fill="none" stroke="#0891b2" stroke-width="3" stroke-linecap="round"/>
+      <!-- Arrow 1 -->
+      <line x1="200" y1="70" x2="245" y2="70" stroke="#6b7280" stroke-width="2" marker-end="url(#ga)"/>
+      <text x="222" y="62" text-anchor="middle" font-size="10" fill="#6b7280">f_1</text>
+      <text x="222" y="86" text-anchor="middle" font-size="9" fill="#6b7280">coupling</text>
+      <!-- Step 2: Intermediate -->
+      <rect x="250" y="10" width="150" height="120" rx="8" fill="#f8fafc" stroke="#e5e7eb" stroke-width="1.5"/>
+      <text x="325" y="28" text-anchor="middle" font-size="11" font-weight="700" fill="#111827">Intermediate</text>
+      <ellipse cx="325" cy="80" rx="52" ry="38" fill="none" stroke="#7c6af7" stroke-width="2.5" stroke-dasharray="5,3"/>
+      <ellipse cx="325" cy="80" rx="30" ry="20" fill="none" stroke="#7c6af7" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <!-- Arrow 2 -->
+      <line x1="408" y1="70" x2="453" y2="70" stroke="#6b7280" stroke-width="2" marker-end="url(#ga)"/>
+      <text x="430" y="62" text-anchor="middle" font-size="10" fill="#6b7280">f_K</text>
+      <text x="430" y="86" text-anchor="middle" font-size="9" fill="#6b7280">coupling</text>
+      <!-- Step 3: Latent -->
+      <rect x="460" y="10" width="180" height="120" rx="8" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+      <text x="550" y="28" text-anchor="middle" font-size="11" font-weight="700" fill="#059669">Latent Space</text>
+      <ellipse cx="550" cy="78" rx="60" ry="44" fill="#d1fae5" stroke="#059669" stroke-width="2"/>
+      <text x="550" y="74" text-anchor="middle" font-size="11" fill="#059669">N(0, I)</text>
+      <text x="550" y="93" text-anchor="middle" font-size="10" fill="#6b7280">Gaussian</text>
+      <defs>
+        <marker id="ga" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#6b7280"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+  <p class="figure-caption"><strong>Figure 3.</strong> A trained normalizing flow maps the complex two-moons distribution through a series of coupling layers until the encoded points resemble a Gaussian. Reversing the process generates new moon-shaped samples.</p>
+</div>
+
+<!-- ===== 8. CODE ===== -->
+<h2><span class="sec-num">8</span>PyTorch Implementation</h2>
+
+<p>The following is a minimal, complete implementation of a RealNVP-style flow trained on the two-moons dataset.</p>
+
+<pre><code>import torch, torch.nn as nn
+from sklearn.datasets import make_moons
+
+class CouplingLayer(nn.Module):
+    def __init__(self, dim=2, hidden=128):
+        super().__init__()
+        d = dim // 2
+        self.d = d
+        # s and t are arbitrary MLPs
+        self.s = nn.Sequential(nn.Linear(d,hidden), nn.Tanh(),
+                               nn.Linear(hidden,hidden), nn.Tanh(),
+                               nn.Linear(hidden, dim-d))
+        self.t = nn.Sequential(nn.Linear(d,hidden), nn.Tanh(),
+                               nn.Linear(hidden,hidden), nn.Tanh(),
+                               nn.Linear(hidden, dim-d))
+
+    def forward(self, z):          # z -> x  (generate)
+        z1, z2 = z[:,:self.d], z[:,self.d:]
+        s, t = self.s(z1), self.t(z1)
+        x2 = z2 * torch.exp(s) + t
+        return torch.cat([z1, x2], 1), s.sum(1)   # (x, log_det)
+
+    def inverse(self, x):          # x -> z  (encode)
+        x1, x2 = x[:,:self.d], x[:,self.d:]
+        s, t = self.s(x1), self.t(x1)
+        z2 = (x2 - t) * torch.exp(-s)
+        return torch.cat([x1, z2], 1), -s.sum(1)
+
+
+class NormalizingFlow(nn.Module):
+    def __init__(self, dim=2, n_layers=8):
+        super().__init__()
+        self.layers = nn.ModuleList([CouplingLayer(dim) for _ in range(n_layers)])
+        d = dim // 2
+        # Alternate which half is transformed each layer
+        self.perms = [torch.arange(dim) if i%2==0
+                      else torch.cat([torch.arange(d,dim), torch.arange(d)])
+                      for i in range(n_layers)]
+
+    def log_prob(self, x):
+        z, ldj = x, torch.zeros(len(x))
+        for layer, p in zip(self.layers, self.perms):
+            z = z[:, p]
+            z, ld = layer.inverse(z)
+            ldj += ld
+        log_pz = -0.5*(z**2 + torch.log(2*torch.tensor(torch.pi))).sum(1)
+        return log_pz + ldj
+
+    @torch.no_grad()
+    def sample(self, n):
+        z = torch.randn(n, 2)
+        for layer, p in zip(reversed(self.layers), reversed(self.perms)):
+            z, _ = layer(z)
+            z = z[:, torch.argsort(p)]
+        return z
+
+
+# --- Train ---
+X, _ = make_moons(5000, noise=0.05)
+data  = torch.tensor(X, dtype=torch.float32)
+model = NormalizingFlow(dim=2, n_layers=8)
+opt   = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+for epoch in range(2000):
+    idx  = torch.randperm(len(data))[:512]
+    loss = -model.log_prob(data[idx]).mean()
+    opt.zero_grad(); loss.backward(); opt.step()
+    if (epoch+1) % 500 == 0:
+        print(f"Epoch {epoch+1}: loss = {loss.item():.4f}")</code></pre>
+
+<!-- ===== 9. ARCHITECTURES ===== -->
+<h2><span class="sec-num">9</span>Notable Architectures</h2>
+
+<table>
+  <tr><th>Architecture</th><th>Year</th><th>Key Contribution</th></tr>
+  <tr><td><strong>NICE</strong></td><td>2014</td><td>First additive coupling layers</td></tr>
+  <tr><td><strong>RealNVP</strong></td><td>2016</td><td>Affine coupling + multi-scale architecture</td></tr>
+  <tr><td><strong>Glow</strong></td><td>2018</td><td>Learned 1x1 convolutions for channel mixing</td></tr>
+  <tr><td><strong>MAF / IAF</strong></td><td>2017</td><td>Autoregressive flows (highly expressive)</td></tr>
+  <tr><td><strong>Neural ODE Flow</strong></td><td>2018</td><td>Continuous-time invertible dynamics</td></tr>
+  <tr><td><strong>NSF</strong></td><td>2019</td><td>Neural spline transformations</td></tr>
+</table>
+
+<!-- ===== 10. APPLICATIONS ===== -->
+<h2><span class="sec-num">10</span>Applications</h2>
+
+<div class="two-col">
+  <div class="col-card">
+    <h4>Scientific Computing</h4>
+    <p>Molecular conformation generation, protein structure sampling, Bayesian inference in physics simulations.</p>
+  </div>
+  <div class="col-card">
+    <h4>Anomaly Detection</h4>
+    <p>Assign exact probability scores to inputs; low-likelihood points are flagged as anomalies.</p>
+  </div>
+  <div class="col-card">
+    <h4>Image Generation</h4>
+    <p>Glow achieves high-quality face synthesis with controllable latent interpolation.</p>
+  </div>
+  <div class="col-card">
+    <h4>Uncertainty Quantification</h4>
+    <p>Lossless encoding enables principled credible intervals and calibrated predictions.</p>
+  </div>
+</div>
+
+<!-- ===== 11. SUMMARY ===== -->
+<h2><span class="sec-num">11</span>Summary</h2>
+
+<div class="callout insight">
+  <div class="callout-label">Three Core Ideas</div>
+  <ol style="margin-left:18px;margin-top:8px;">
+    <li><strong>Simple to complex:</strong> a learned invertible function warps Gaussian noise into complex data without creating or destroying probability mass.</li>
+    <li><strong>Volume correction:</strong> the Jacobian determinant accounts precisely for how space is stretched or compressed at each point.</li>
+    <li><strong>Triangular structure:</strong> coupling layers design the Jacobian to be triangular, reducing an \(\mathcal{O}(D^3)\) computation to \(\mathcal{O}(D)\).</li>
+  </ol>
+</div>
+
+<p>Normalizing flows remain the method of choice whenever exact likelihoods are required - in scientific simulation, uncertainty estimation, and density-based anomaly detection. While recent diffusion models surpass flows in raw image quality, the theoretical elegance and probabilistic rigor of flows make them indispensable in the generative modeling toolkit.</p>
+
+<div class="callout note">
+  <div class="callout-label">Interactive Companion</div>
+  An interactive HTML guide with animated coupling layer diagrams, live distribution transformations, and a full runnable PyTorch demo accompanies this article. All concepts above can be explored visually without any setup.
+</div>
+
+<!-- ===== REFERENCES ===== -->
+<h2><span class="sec-num">Ref</span>References</h2>
+<ol style="font-size:10pt;line-height:1.7;">
+  <li>Dinh, L., Krueger, D., Bengio, Y. (2014). NICE: Non-linear Independent Components Estimation. <em>ICLR Workshop</em>.</li>
+  <li>Dinh, L., Sohl-Dickstein, J., Bengio, S. (2016). Density estimation using Real-valued Non-Volume Preserving transformations. <em>ICLR 2017</em>.</li>
+  <li>Kingma, D. P., Dhariwal, P. (2018). Glow: Generative Flow with Invertible 1x1 Convolutions. <em>NeurIPS 2018</em>.</li>
+  <li>Papamakarios, G., Nalisnick, E., et al. (2021). Normalizing Flows for Probabilistic Modeling and Inference. <em>JMLR</em>.</li>
+  <li>Rezende, D., Mohamed, S. (2015). Variational Inference with Normalizing Flows. <em>ICML 2015</em>.</li>
+</ol>
+
+<!-- ===== FOOTER ===== -->
+<div class="article-footer">
+  <div class="footer-tags">
+    <span class="tag">#MachineLearning</span>
+    <span class="tag">#GenerativeModels</span>
+    <span class="tag">#NormalizingFlows</span>
+    <span class="tag">#DeepLearning</span>
+    <span class="tag">#PyTorch</span>
+    <span class="tag">#DataScience</span>
+    <span class="tag">#AI</span>
+  </div>
+  <p>Dr. Mohamed Elbasheer - April 2026</p>
+  <p style="margin-top:6px;font-size:8.5pt;color:#9ca3af;">Open article.html in your browser and press "Save as PDF" to export.</p>
+</div>
+
+</div><!-- .page -->
+</body>
+</html>
